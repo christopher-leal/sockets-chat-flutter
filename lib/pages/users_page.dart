@@ -1,41 +1,71 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:realtime_chat/models/user.dart';
+import 'package:realtime_chat/pages/login_page.dart';
+import 'package:realtime_chat/services/auth_service.dart';
+import 'package:realtime_chat/services/chat_service.dart';
+import 'package:realtime_chat/services/socket_service.dart';
+import 'package:realtime_chat/services/user_service.dart';
 
-class UsersPage extends StatelessWidget {
-  RefreshController _refreshController =
+class UsersPage extends StatefulWidget {
+  @override
+  _UsersPageState createState() => _UsersPageState();
+}
+
+class _UsersPageState extends State<UsersPage> {
+  final RefreshController _refreshController =
       RefreshController(initialRefresh: false);
+
+  @override
+  void initState() {
+    final usersService = Provider.of<UserService>(context, listen: false);
+    usersService.getUsers();
+
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final usuarios = [
-      User(uid: '1', name: 'Test', email: 'test@test.com', online: true),
-      User(uid: '2', name: 'Test 2', email: 'test2@test.com', online: true),
-      User(uid: '3', name: 'Test 3', email: 'test3@test.com', online: false),
-      User(uid: '4', name: 'Test 4', email: 'test4@test.com', online: true),
-    ];
+    final authService = Provider.of<AuthService>(context);
+    final socketService = Provider.of<SocketService>(context);
+    final usersService = Provider.of<UserService>(context);
+
+    final user = authService.user;
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          'Usuario',
+          user.name.substring(0, 2),
           style: TextStyle(color: Colors.black54),
         ),
         backgroundColor: Colors.white,
         leading: IconButton(
           icon: Icon(Icons.exit_to_app, color: Colors.black54),
-          onPressed: () {},
+          onPressed: () async {
+            socketService.disconnect();
+            await authService.logout();
+            Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) =>
+                        LoginPage(),
+                    transitionDuration: Duration(milliseconds: 0)));
+          },
         ),
         actions: [
           Container(
             margin: EdgeInsets.only(right: 10),
-            child: Icon(Icons.check_circle, color: Colors.blue[400]),
+            child: socketService.serverStatus == ServerStatus.Online
+                ? Icon(Icons.check_circle, color: Colors.blue[400])
+                : Icon(Icons.offline_bolt, color: Colors.red[400]),
           )
         ],
       ),
       body: SmartRefresher(
         enablePullDown: true,
-        enablePullUp: true,
+        enablePullUp: false,
         header: WaterDropHeader(
           complete: Icon(
             Icons.check,
@@ -44,20 +74,26 @@ class UsersPage extends StatelessWidget {
           waterDropColor: Colors.blue[400],
         ),
         controller: _refreshController,
-        onRefresh: _onRefresh,
+        onRefresh: () => _onRefresh(context),
         onLoading: _onLoading,
         child: ListView.separated(
             physics: BouncingScrollPhysics(),
-            itemBuilder: (_, index) => _userListTile(context, usuarios[index]),
+            itemBuilder: (_, index) =>
+                _userListTile(context, usersService.users[index]),
             separatorBuilder: (context, index) => Divider(),
-            itemCount: usuarios.length),
+            itemCount: usersService.users.length),
       ),
     );
   }
 
   ListTile _userListTile(BuildContext context, User user) {
+    final chatService = Provider.of<ChatService>(context, listen: false);
+
     return ListTile(
-      onTap: () => Navigator.pushNamed(context, 'chat'),
+      onTap: () {
+        chatService.userTo = user;
+        Navigator.pushNamed(context, 'chat');
+      },
       leading: CircleAvatar(
         backgroundColor: Colors.blue[100],
         child: Text(user.name.substring(0, 2)),
@@ -74,10 +110,12 @@ class UsersPage extends StatelessWidget {
     );
   }
 
-  void _onRefresh() async {
+  void _onRefresh(BuildContext context) async {
     // monitor network fetch
-    await Future.delayed(Duration(milliseconds: 1000));
     // if failed,use refreshFailed()
+    final usersService = Provider.of<UserService>(context, listen: false);
+    await usersService.getUsers();
+
     _refreshController.refreshCompleted();
   }
 

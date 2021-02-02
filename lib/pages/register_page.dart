@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:realtime_chat/helpers/show_alert.dart';
+import 'package:realtime_chat/services/auth_service.dart';
+import 'package:realtime_chat/services/socket_service.dart';
 import 'package:realtime_chat/widgets/blue_button.dart';
 import 'package:realtime_chat/widgets/labels.dart';
 import 'package:realtime_chat/widgets/logo.dart';
@@ -50,6 +54,9 @@ class __FormState extends State<_Form> {
   final passwordController = TextEditingController();
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final socketService = Provider.of<SocketService>(context);
+
     return Container(
       margin: EdgeInsets.only(top: 40.0),
       padding: EdgeInsets.symmetric(horizontal: 50.0),
@@ -75,9 +82,21 @@ class __FormState extends State<_Form> {
           ),
           BlueButton(
             text: 'Ingresar',
-            onPressed: () {
-              print(emailController.text);
-            },
+            onPressed: authService.authenticating
+                ? null
+                : () async {
+                    final success = await authService.setUser(
+                        emailController.text.trim(),
+                        emailController.text.trim(),
+                        passwordController.text.trim());
+
+                    if (success) {
+                      socketService.connect();
+                      return Navigator.pushReplacementNamed(context, 'users');
+                    }
+                    showAlert(
+                        context, 'Register wrong', 'Something went wrong');
+                  },
           )
           // TextField(),
         ],

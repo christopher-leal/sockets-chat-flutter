@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:realtime_chat/routes/routes.dart';
+import 'package:realtime_chat/services/auth_service.dart';
+import 'package:realtime_chat/services/chat_service.dart';
+import 'package:realtime_chat/services/socket_service.dart';
+import 'package:realtime_chat/services/user_service.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Realtime Chat',
-      initialRoute: 'users',
-      routes: appRoutes,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (BuildContext context) => AuthService()),
+        ChangeNotifierProvider(
+            create: (BuildContext context) => SocketService()),
+        ChangeNotifierProvider(create: (BuildContext context) => UserService()),
+        ChangeNotifierProvider(create: (BuildContext context) => ChatService()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Realtime Chat',
+        initialRoute: 'loading',
+        routes: appRoutes,
+      ),
     );
   }
 }
