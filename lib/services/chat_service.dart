@@ -28,15 +28,8 @@ class ChatService with ChangeNotifier {
 
   Future<void> getMessages(String toId) async {
     final data = {'messageTo': toId};
-    // final resp = await http.post('${Enviroment.apiUrl}/messages',
-    //     body: {'messageTo': toId},
-    //     headers: {'token': await AuthService.getToken()});
     final resp = await http.post('${Enviroment.apiUrl}/messages',
-        body: jsonEncode(data),
-        headers: {
-          'Content-Type': 'application/json',
-          'token': await AuthService.getToken()
-        });
+        body: jsonEncode(data), headers: {'Content-Type': 'application/json', 'token': await AuthService.getToken()});
 
     if (resp.statusCode == 200) {
       final data = jsonDecode(resp.body);
